@@ -1,3 +1,5 @@
+const { assert } = require("chai");
+
 const Instablock = artifacts.require("./Instablock.sol");
 
 require("chai")
@@ -28,7 +30,7 @@ contract("Instablock", ([deployer, author, tipper]) => {
 
 	describe("images", async () => {
 		let result, imageCount;
-		const hash = "QmV8cfu6n4NT5xRr2AHdKxFMTZEJrA44qgrBCr739BN9Wb";
+		const hash = "abc123";
 
 		before(async () => {
 			result = await instablock.uploadImage(hash, "Image description", {
@@ -37,9 +39,8 @@ contract("Instablock", ([deployer, author, tipper]) => {
 			imageCount = await instablock.imageCount();
 		});
 
-		//check event
 		it("creates images", async () => {
-			// SUCESS
+			//SUCCESS
 			assert.equal(imageCount, 1);
 			const event = result.logs[0].args;
 			assert.equal(
@@ -53,20 +54,20 @@ contract("Instablock", ([deployer, author, tipper]) => {
 				"Image description",
 				"description is correct"
 			);
-			assert.equal(event.tipAmount, "0", "tip amount is correct");
+			assert.equal(event.tipAmount, "0", "ti amount is correct");
 			assert.equal(event.author, author, "author is correct");
 
-			// FAILURE: Image must have hash
+			//FAILURE:  Image must have hash
 			await instablock.uploadImage("", "Image description", {
 				from: author,
 			}).should.be.rejected;
 
-			// FAILURE: Image must have description
-			await instablock.uploadImage("Image hash", "", { from: author })
-				.should.be.rejected;
+			//FAILURE:  Image must have description
+			await instablock.uploadImage("Image hash", "", {
+				from: author,
+			}).should.be.rejected;
 		});
-
-		//check from Struct
+		//Check from Struct
 		it("lists images", async () => {
 			const image = await instablock.images(imageCount);
 			assert.equal(
@@ -82,60 +83,6 @@ contract("Instablock", ([deployer, author, tipper]) => {
 			);
 			assert.equal(image.tipAmount, "0", "tip amount is correct");
 			assert.equal(image.author, author, "author is correct");
-		});
-
-		it("allows users to tip images", async () => {
-			// Track the author balance before purchase
-			let oldAuthorBalance;
-			oldAuthorBalance = await web3.eth.getBalance(author);
-			oldAuthorBalance = new web3.utils.BN(oldAuthorBalance);
-
-			result = await instablock.tipImageOwner(imageCount, {
-				from: tipper,
-				value: web3.utils.toWei("1", "Ether"),
-			});
-
-			// SUCCESS
-			const event = result.logs[0].args;
-			assert.equal(
-				event.id.toNumber(),
-				imageCount.toNumber(),
-				"id is correct"
-			);
-			assert.equal(event.hash, hash, "Hash is correct");
-			assert.equal(
-				event.description,
-				"Image description",
-				"description is correct"
-			);
-			assert.equal(
-				event.tipAmount,
-				"1000000000000000000",
-				"tip amount is correct"
-			);
-			assert.equal(event.author, author, "author is correct");
-
-			// Check that author received funds
-			let newAuthorBalance;
-			newAuthorBalance = await web3.eth.getBalance(author);
-			newAuthorBalance = new web3.utils.BN(newAuthorBalance);
-
-			let tipImageOwner;
-			tipImageOwner = web3.utils.toWei("1", "Ether");
-			tipImageOwner = new web3.utils.BN(tipImageOwner);
-
-			const expectedBalance = oldAuthorBalance.add(tipImageOwner);
-
-			assert.equal(
-				newAuthorBalance.toString(),
-				expectedBalance.toString()
-			);
-
-			// FAILURE: Tries to tip a image that does not exist
-			await instablock.tipImageOwner(99, {
-				from: tipper,
-				value: web3.utils.toWei("1", "Ether"),
-			}).should.be.rejected;
 		});
 	});
 });
